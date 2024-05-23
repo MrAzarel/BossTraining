@@ -29,18 +29,22 @@ public:
 
 private:
 	
-	void InitializeWeights();
-	float GetRandomWeight();
-	float Sigmoid(float x);
-	float SigmoidDerivative(float x);
+    void InitializeWeights();
+    float GetRandomWeight();
+    float Sigmoid(float x);
+    float SigmoidDerivative(float x);
 
-	static constexpr int InputNodes = 6;
-	static constexpr int HiddenNodes = 10;
-	static constexpr int OutputNodes = 5;
+    static constexpr int InputNodes = 8; // x и y владельца, x и y игрока, расстояние до игрока, здоровье владельца, здоровье игрока, последнее действие
+    static constexpr int HiddenNodes1 = 12;
+    static constexpr int HiddenNodes2 = 10;
+    static constexpr int OutputNodes = 5; // три атаки, отсутствие атаки, движение по X и Y
+    float bias = 0.5f;
 
-	float LearningRate;
-	TArray<TArray<float>> WeightsInputHidden;
-	TArray<TArray<float>> WeightsHiddenOutput;
-	TArray<float> HiddenLayerOutputs;
-	TArray<float> FinalOutputs;
+    float LearningRate;
+    TArray<TArray<float>> WeightsInputHidden1;
+    TArray<TArray<float>> WeightsHidden1Hidden2;
+    TArray<TArray<float>> WeightsHiddenOutput;
+    TArray<float> HiddenLayer1Outputs;
+    TArray<float> HiddenLayer2Outputs;
+    TArray<float> FinalOutputs;
 };

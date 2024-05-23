@@ -35,33 +35,47 @@ void UBT_NeuralNetwork::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UBT_NeuralNetwork::InitializeWeights()
 {
-    WeightsInputHidden.SetNum(InputNodes);
+    // Инициализация весов для первого скрытого слоя
+    WeightsInputHidden1.SetNum(InputNodes);
     for (int i = 0; i < InputNodes; ++i)
     {
-        WeightsInputHidden[i].SetNum(HiddenNodes);
-        for (int j = 0; j < HiddenNodes; j++)
+        WeightsInputHidden1[i].SetNum(HiddenNodes1);
+        for (int j = 0; j < HiddenNodes1; ++j)
         {
-            WeightsInputHidden[i][j] = GetRandomWeight();
+            WeightsInputHidden1[i][j] = GetRandomWeight();
         }
     }
 
-    WeightsHiddenOutput.SetNum(HiddenNodes);
-    for (int i = 0; i < HiddenNodes; ++i)
+    // Инициализация весов для второго скрытого слоя
+    WeightsHidden1Hidden2.SetNum(HiddenNodes1);
+    for (int i = 0; i < HiddenNodes1; ++i)
+    {
+        WeightsHidden1Hidden2[i].SetNum(HiddenNodes2);
+        for (int j = 0; j < HiddenNodes2; ++j)
+        {
+            WeightsHidden1Hidden2[i][j] = GetRandomWeight();
+        }
+    }
+
+    // Инициализация весов для выходного слоя
+    WeightsHiddenOutput.SetNum(HiddenNodes2);
+    for (int i = 0; i < HiddenNodes2; ++i)
     {
         WeightsHiddenOutput[i].SetNum(OutputNodes);
-        for (int j = 0; j < OutputNodes; j++)
+        for (int j = 0; j < OutputNodes; ++j)
         {
             WeightsHiddenOutput[i][j] = GetRandomWeight();
         }
     }
 
-    HiddenLayerOutputs.SetNum(HiddenNodes);
+    HiddenLayer1Outputs.SetNum(HiddenNodes1);
+    HiddenLayer2Outputs.SetNum(HiddenNodes2);
     FinalOutputs.SetNum(OutputNodes);
 }
 
 float UBT_NeuralNetwork::GetRandomWeight()
 {
-    return FMath::FRand() - 0.5f;
+    return FMath::FRand() - bias;
 }
 
 float UBT_NeuralNetwork::Sigmoid(float x)
@@ -77,22 +91,32 @@ float UBT_NeuralNetwork::SigmoidDerivative(float x)
 void UBT_NeuralNetwork::Train(const TArray<float>& Inputs)
 {
     // Прямое распространение
-    for (int i = 0; i < HiddenNodes; i++)
+    for (int i = 0; i < HiddenNodes1; ++i)
     {
         float Sum = 0.0f;
-        for (int j = 0; j < InputNodes; j++)
+        for (int j = 0; j < InputNodes; ++j)
         {
-            Sum += Inputs[j] * WeightsInputHidden[j][i];
+            Sum += Inputs[j] * WeightsInputHidden1[j][i];
         }
-        HiddenLayerOutputs[i] = Sigmoid(Sum);
+        HiddenLayer1Outputs[i] = Sigmoid(Sum);
     }
 
-    for (int i = 0; i < OutputNodes; i++)
+    for (int i = 0; i < HiddenNodes2; ++i)
     {
         float Sum = 0.0f;
-        for (int j = 0; j < HiddenNodes; j++)
+        for (int j = 0; j < HiddenNodes1; ++j)
         {
-            Sum += HiddenLayerOutputs[j] * WeightsHiddenOutput[j][i];
+            Sum += HiddenLayer1Outputs[j] * WeightsHidden1Hidden2[j][i];
+        }
+        HiddenLayer2Outputs[i] = Sigmoid(Sum);
+    }
+
+    for (int i = 0; i < OutputNodes; ++i)
+    {
+        float Sum = 0.0f;
+        for (int j = 0; j < HiddenNodes2; ++j)
+        {
+            Sum += HiddenLayer2Outputs[j] * WeightsHiddenOutput[j][i];
         }
         FinalOutputs[i] = Sigmoid(Sum);
     }
@@ -100,38 +124,59 @@ void UBT_NeuralNetwork::Train(const TArray<float>& Inputs)
     // Ошибки на выходном слое
     TArray<float> OutputErrors;
     OutputErrors.SetNum(OutputNodes);
-    for (int i = 0; i < OutputNodes; i++)
+    for (int i = 0; i < OutputNodes; ++i)
     {
-        OutputErrors[i] = FinalOutputs[i] * (1 - FinalOutputs[i]) * (FinalOutputs[i] - Inputs[i % InputNodes]);
+        OutputErrors[i] = FinalOutputs[i] * (1.0f - FinalOutputs[i]) * (FinalOutputs[i] - Inputs[i % InputNodes]);
     }
 
-    // Ошибки на скрытом слое
-    TArray<float> HiddenErrors;
-    HiddenErrors.SetNum(HiddenNodes);
-    for (int i = 0; i < HiddenNodes; i++)
+    // Ошибки на втором скрытом слое
+    TArray<float> HiddenErrors2;
+    HiddenErrors2.SetNum(HiddenNodes2);
+    for (int i = 0; i < HiddenNodes2; ++i)
     {
         float Sum = 0.0f;
-        for (int j = 0; j < OutputNodes; j++)
+        for (int j = 0; j < OutputNodes; ++j)
         {
             Sum += OutputErrors[j] * WeightsHiddenOutput[i][j];
         }
-        HiddenErrors[i] = HiddenLayerOutputs[i] * (1 - HiddenLayerOutputs[i]) * Sum;
+        HiddenErrors2[i] = HiddenLayer2Outputs[i] * (1.0f - HiddenLayer2Outputs[i]) * Sum;
+    }
+
+    // Ошибки на первом скрытом слое
+    TArray<float> HiddenErrors1;
+    HiddenErrors1.SetNum(HiddenNodes1);
+    for (int i = 0; i < HiddenNodes1; ++i)
+    {
+        float Sum = 0.0f;
+        for (int j = 0; j < HiddenNodes2; ++j)
+        {
+            Sum += HiddenErrors2[j] * WeightsHidden1Hidden2[i][j];
+        }
+        HiddenErrors1[i] = HiddenLayer1Outputs[i] * (1.0f - HiddenLayer1Outputs[i]) * Sum;
     }
 
     // Обновление весов
-    for (int i = 0; i < HiddenNodes; i++)
+    for (int i = 0; i < HiddenNodes2; ++i)
     {
-        for (int j = 0; j < OutputNodes; j++)
+        for (int j = 0; j < OutputNodes; ++j)
         {
-            WeightsHiddenOutput[i][j] -= LearningRate * OutputErrors[j] * HiddenLayerOutputs[i];
+            WeightsHiddenOutput[i][j] -= LearningRate * OutputErrors[j] * HiddenLayer2Outputs[i];
         }
     }
 
-    for (int i = 0; i < InputNodes; i++)
+    for (int i = 0; i < HiddenNodes1; ++i)
     {
-        for (int j = 0; j < HiddenNodes; j++)
+        for (int j = 0; j < HiddenNodes2; ++j)
         {
-            WeightsInputHidden[i][j] -= LearningRate * HiddenErrors[j] * Inputs[i];
+            WeightsHidden1Hidden2[i][j] -= LearningRate * HiddenErrors2[j] * HiddenLayer1Outputs[i];
+        }
+    }
+
+    for (int i = 0; i < InputNodes; ++i)
+    {
+        for (int j = 0; j < HiddenNodes1; ++j)
+        {
+            WeightsInputHidden1[i][j] -= LearningRate * HiddenErrors1[j] * Inputs[i];
         }
     }
 }
@@ -139,22 +184,32 @@ void UBT_NeuralNetwork::Train(const TArray<float>& Inputs)
 TArray<float> UBT_NeuralNetwork::Predict(const TArray<float>& Inputs)
 {
     // Прямое распространение
-    for (int i = 0; i < HiddenNodes; i++)
+    for (int i = 0; i < HiddenNodes1; ++i)
     {
         float Sum = 0.0f;
-        for (int j = 0; j < InputNodes; j++)
+        for (int j = 0; j < InputNodes; ++j)
         {
-            Sum += Inputs[j] * WeightsInputHidden[j][i];
+            Sum += Inputs[j] * WeightsInputHidden1[j][i];
         }
-        HiddenLayerOutputs[i] = Sigmoid(Sum);
+        HiddenLayer1Outputs[i] = Sigmoid(Sum);
     }
 
-    for (int i = 0; i < OutputNodes; i++)
+    for (int i = 0; i < HiddenNodes2; ++i)
     {
         float Sum = 0.0f;
-        for (int j = 0; j < HiddenNodes; j++)
+        for (int j = 0; j < HiddenNodes1; ++j)
         {
-            Sum += HiddenLayerOutputs[j] * WeightsHiddenOutput[j][i];
+            Sum += HiddenLayer1Outputs[j] * WeightsHidden1Hidden2[j][i];
+        }
+        HiddenLayer2Outputs[i] = Sigmoid(Sum);
+    }
+
+    for (int i = 0; i < OutputNodes; ++i)
+    {
+        float Sum = 0.0f;
+        for (int j = 0; j < HiddenNodes2; ++j)
+        {
+            Sum += HiddenLayer2Outputs[j] * WeightsHiddenOutput[j][i];
         }
         FinalOutputs[i] = Sigmoid(Sum);
     }
