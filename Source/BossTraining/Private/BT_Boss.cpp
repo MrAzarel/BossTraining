@@ -69,8 +69,20 @@ void ABT_Boss::FillInputs()
 {
 	LoacationX = GetActorLocation().X;
 	LoacationY = GetActorLocation().Y;
+
 	if (auto* const Player = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)) 
 	{
-
+		PlayerLoacationX = Player->GetActorLocation().X;
+		PlayerLoacationY = Player->GetActorLocation().Y;
+		PlayerHealth = Player.GetComponents()->HealthComponent->GetHealth();
 	}
+
+	Inputs.Add(LoacationX);
+	Inputs.Add(LoacationY);
+	Inputs.Add(PlayerLoacationX);
+	Inputs.Add(PlayerLoacationY);
+	Inputs.Add(FMath::Sqrt(FMath::Square(PlayerLoacationX) + FMath::Square(PlayerLoacationY)));
+	Inputs.Add(HealthComponent->GetHealth());
+	Inputs.Add(PlayerHealth);
+	Inputs.Add(LastAction);
 }

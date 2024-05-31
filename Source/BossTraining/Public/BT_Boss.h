@@ -53,6 +53,11 @@ private:
 
 	float LoacationX = GetActorLocation().X;
 	float LoacationY = GetActorLocation().Y;
+	float LastAction;
+
+	float PlayerLoacationX;
+	float PlayerLoacationY;
+	float PlayerHealth;
 
 	float FirstAttack = 0.f;
 	float SecondAttack = 0.f;
